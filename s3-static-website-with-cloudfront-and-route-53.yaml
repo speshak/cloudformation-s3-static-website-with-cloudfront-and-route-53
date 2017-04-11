@@ -90,10 +90,23 @@ Resources:
           Compress: true
           TargetOriginId: S3Origin
           ForwardedValues:
-            QueryString: true
+            QueryString: false
             Cookies:
               Forward: none
           ViewerProtocolPolicy: redirect-to-https
+        CacheBehaviors:
+          - AllowedMethods:
+            - GET
+            - HEAD
+            Compress: true
+            TargetOriginId: S3Origin
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+            ViewerProtocolPolicy: redirect-to-https
+            MinTTL: 86400
+            PathPattern: css/*
         PriceClass: PriceClass_All
         ViewerCertificate:
           AcmCertificateArn: !Ref AcmCertificateArn
