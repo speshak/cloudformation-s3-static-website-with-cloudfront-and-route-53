@@ -14,8 +14,12 @@ Parameters:
     ConstraintDescription: must be a valid DNS zone name.
   AcmCertificateArn:
     Type: String
+    Default: ''
     Description: the Amazon Resource Name (ARN) of an AWS Certificate Manager (ACM) certificate.
-    AllowedPattern: "arn:aws:acm:.*"
+  IAMDeployUser:
+    Type: String
+    Default: ''
+    Description: the IAM user/role that is allowed to deploy content
 Mappings:
   RegionMap:
     us-east-1:
@@ -42,6 +46,13 @@ Mappings:
     sa-east-1:
       S3HostedZoneId: Z31GFT0UA1I2HV
       S3WebsiteEndpoint: s3-website-sa-east-1.amazonaws.com
+
+Conditions:
+  UseACMCertificate:
+    !Not [!Equals [!Ref AcmCertificateArn, '']]
+  UseDeploymentUser:
+    !Not [!Equals [!Ref IAMDeployUser, '']]
+
 Resources:
   WebsiteBucket:
     Type: AWS::S3::Bucket
@@ -63,6 +74,25 @@ Resources:
           Principal: '*'
           Action: s3:GetObject
           Resource: !Join ['', ['arn:aws:s3:::', !Ref 'WebsiteBucket', /*]]
+
+  DeployUserAccess:
+    Type: AWS::IAM::Policy
+    Condition: UseDeploymentUser
+    Properties:
+      Users:
+        - !Ref IAMDeployUser
+      PolicyDocument:
+        Statement:
+          - Sid: DeploymentUserAccess
+            Effect: Allow
+            Principal:
+              AWS: !Ref IAMDeployUser
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+            Resource: !Join ['', ['arn:aws:s3:::', !Ref 'WebsiteBucket', /*]]
+
   WebsiteCloudfront:
     Type: AWS::CloudFront::Distribution
     DependsOn:
@@ -96,8 +126,14 @@ Resources:
           ViewerProtocolPolicy: redirect-to-https
         PriceClass: PriceClass_All
         ViewerCertificate:
-          AcmCertificateArn: !Ref AcmCertificateArn
-          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1
+          AcmCertificateArn:
+            !If [UseACMCertificate, !Ref AcmCertificateArn, !Ref 'AWS::NoValue']
+          CloudFrontDefaultCertificate:
+            !If [UseACMCertificate, !Ref 'AWS::NoValue', 'true']
+          SslSupportMethod:
+            !If [UseACMCertificate, sni-only, !Ref 'AWS::NoValue']
+
   WebsiteDNSName:
     Type: AWS::Route53::RecordSetGroup
     Properties:
