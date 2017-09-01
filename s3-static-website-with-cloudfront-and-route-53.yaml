@@ -117,7 +117,7 @@ Resources:
             QueryString: true
             Cookies:
               Forward: none
-          ViewerProtocolPolicy: redirect-to-https
+          ViewerProtocolPolicy: !If [UseACMCertificate, 'redirect-to-https', 'allow-all']
         PriceClass: PriceClass_All
         ViewerCertificate:
           MinimumProtocolVersion: TLSv1
