@@ -15,6 +15,10 @@ Parameters:
     Type: String
     Default: ''
     Description: the IAM user/role that is allowed to deploy content
+  IAMRole:
+    Type: String
+    Description: IAM Role Name for IAM Policy Attachment
+
 Mappings:
   RegionMap:
     us-east-1:
@@ -45,10 +49,36 @@ Mappings:
 Conditions:
   UseACMCertificate:
     !Not [!Equals [!Ref AcmCertificateArn, '']]
+  UseIAMRole:
+    !Not [!Equals [!Ref IAMRole, '']]
   UseDeploymentUser:
     !Not [!Equals [!Ref IAMDeployUser, '']]
 
 Resources:
+  IAMPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:GetBucketLocation
+              - s3:ListAllMyBuckets
+            Resource: 'arn:aws:s3:::*'
+          - Effect: Allow
+            Action:
+              - s3:ListBucket
+            Resource: !Sub arn:aws:s3:::${FullDomainName}
+          - Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:GetObject
+              - s3:DeleteObject
+            Resource: !Sub arn:aws:s3:::${FullDomainName}/*
+      PolicyName: !Sub ${FullDomainName}Policy
+      Roles:
+        - !If [UseIAMRole, !Ref IAMRole, !Ref 'AWS::NoValue']
   WebsiteBucket:
     Type: AWS::S3::Bucket
     Properties:
