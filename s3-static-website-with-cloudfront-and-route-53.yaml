@@ -2,11 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: Creates an S3 bucket configured for hosting a static website, and a Route
   53 DNS record pointing to the bucket
 Parameters:
-  DomainName:
-    Type: String
-    Description: The DNS name of an existing Amazon Route 53 hosted zone e.g. jevsejev.io
-    AllowedPattern: (?!-)[a-zA-Z0-9-.]{1,63}(?<!-)
-    ConstraintDescription: must be a valid DNS zone name.
   FullDomainName:
     Type: String
     Description: The full domain name e.g. www.jevsejev.io
@@ -101,8 +96,7 @@ Resources:
       DistributionConfig:
         Comment: Cloudfront Distribution pointing to S3 bucket
         Origins:
-        - DomainName: !Join [., [!Ref 'FullDomainName', !FindInMap [RegionMap, !Ref 'AWS::Region',
-                S3WebsiteEndpoint]]]
+        - DomainName: !Join [., [!Ref 'FullDomainName', !FindInMap [RegionMap, !Ref 'AWS::Region', S3WebsiteEndpoint]]]
           Id: S3Origin
           CustomOriginConfig:
             HTTPPort: '80'
@@ -133,17 +127,6 @@ Resources:
             !If [UseACMCertificate, !Ref 'AWS::NoValue', 'true']
           SslSupportMethod:
             !If [UseACMCertificate, sni-only, !Ref 'AWS::NoValue']
-
-  WebsiteDNSName:
-    Type: AWS::Route53::RecordSetGroup
-    Properties:
-      HostedZoneName: !Join ['', [!Ref 'DomainName', .]]
-      RecordSets:
-      - Name: !Ref 'FullDomainName'
-        Type: A
-        AliasTarget:
-          HostedZoneId: Z2FDTNDATAQYW2
-          DNSName: !GetAtt [WebsiteCloudfront, DomainName]
 Outputs:
   BucketName:
     Value: !Ref 'WebsiteBucket'
